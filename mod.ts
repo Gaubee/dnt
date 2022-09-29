@@ -134,6 +134,11 @@ export interface BuildOptions {
     /**
      * @default false
      */
+    /**
+   * Deno enabled `isolatedModules` by default. but you can config `isolatedModules` for your js output
+   * @default true
+   */
+    isolatedModules?: boolean;
     emitDecoratorMetadata?: boolean;
   };
   /** Action to do after emitting and before running tests. */
@@ -390,6 +395,7 @@ export async function build(options: BuildOptions): Promise<void> {
     const emitResult = program.emit(
       undefined,
       (filePath, data, writeByteOrderMark) => {
+        data = changeFileSuffix(data, opts?.onlyDtsFiles)
         if (writeByteOrderMark) {
           data = "\uFEFF" + data;
         }
@@ -404,6 +410,13 @@ export async function build(options: BuildOptions): Promise<void> {
       outputDiagnostics(emitResult.diagnostics);
       throw new Error(`Had ${emitResult.diagnostics.length} emit diagnostics.`);
     }
+  }
+
+  function changeFileSuffix(data: string, onlyDtsFiles?: boolean) {
+    if (onlyDtsFiles) {
+      return data.replace(/\.js/g, ".d.ts")
+    }
+    return data
   }
 
   function createPackageJson() {
@@ -475,8 +488,8 @@ export async function build(options: BuildOptions): Promise<void> {
           denoTestShimPackageName: denoTestShimPackage == null
             ? undefined
             : denoTestShimPackage.name === "@deno/shim-deno"
-            ? "@deno/shim-deno/test-internals"
-            : denoTestShimPackage.name,
+              ? "@deno/shim-deno/test-internals"
+              : denoTestShimPackage.name,
           testEntryPoints: transformOutput.test.entryPoints,
           includeEsModule: options.esModule !== false,
           includeScriptModule: options.scriptModule !== false,
